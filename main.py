@@ -20,12 +20,25 @@ def main():
     #Select the file name, topic, and # of tweets to collect
     filename = input("Enter a filename: ")
     searchterm = input("Enter a search term: ")
-    tweetcount = input("Enter the target number of tweets: ")
+    while True:
+        try:
+            tweetcount = int(input("Enter the target number of tweets: "))
+        except ValueError:
+            print("Not an integer")
+        else:
+            break
+    geotagged = input("Only save tweets with coordinates? y/n: ")
+    while(geotagged.lower() not in ['y', 'n', 'yes', 'no']):
+        geotagged = input("Please choose y/n: ")
+    if geotagged == 'y':
+        needCoords = True
+    else:
+        needCoords = False
 
     #Set up listener
     class TweepyListener(tweepy.StreamListener):
         counter = 0
-        print("Searching for " + tweetcount + " tweets on the topic \'" + searchterm + "\'")
+        print("Searching for " + str(tweetcount) + " tweets on the topic \'" + searchterm + "\'")
 
         def on_status(self, status):
             #print(status.text)
@@ -41,14 +54,21 @@ def main():
         def on_data(self, raw_data):
             if TweepyListener.counter < int(tweetcount):
                 json_data = json.loads(raw_data)
-                content = json_data['text']
-                created = json_data['created_at']
-                print(content)
-                coords = json_data["coordinates"]
-                with open('%s.csv' % filename, 'a', encoding='utf-8-sig', newline='') as file:
-                    writer = csv.writer(file)
-                    writer.writerow([created,content,coords])
-                TweepyListener.counter += 1
+                coords = None
+                if 'text' in json_data:
+                    content = json_data['text']
+                if 'created_at' in json_data:
+                    created = json_data['created_at']
+                if 'coordinates' in json_data:
+                    coords = json_data['coordinates']
+                if  not needCoords or needCoords and coords is not None:
+                    #print(coords)
+                    print(content)
+                    with open('%s.csv' % filename, 'a', encoding='utf-8-sig', newline='') as file:
+                        writer = csv.writer(file)
+                        writer.writerow([created,content,coords])
+                        #writer.writerow([coords])
+                    TweepyListener.counter += 1
             else:
                 print('done! *-* \nSaved ' + str(TweepyListener.counter) + ' tweets to ' + '%s.csv' % filename)
                 return False
